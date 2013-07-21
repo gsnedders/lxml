@@ -1190,6 +1190,29 @@ def check_string_utf8(pystring):
         i += 1
     return is_non_ascii
 
+__CHECK_UTF8_NARROW = re.compile(u"^(?:[\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD]|[\uD800-\uDBFF][\uDC00-\uDFFFF])*$")
+__CHECK_UTF8_WIDE = re.compile(u"^[\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]*$")
+
+def check_string_utf8_unicode(pyunicode):
+    u"""Check if a string looks like valid UTF-8 XML content.  Returns 0
+    for ASCII, 1 for UTF-8 and -1 in the case of errors, such as NULL
+    bytes or ASCII control characters.
+    """
+    if sys.maxunicode == 0xFFFF:
+        matcher = __CHECK_UTF8_NARROW
+    else:
+        matcher = __CHECK_UTF8_WIDE
+
+    if not matcher.match(pyunicode):
+        return -1
+
+    try:
+        pyunicode.encode("ascii", "strict")
+    except UnicodeEncodeError:
+        return 1
+    else:
+        return 0
+
 def funicodeOrNone(s):
     return funicode(s) if s else None
 
@@ -1218,7 +1241,7 @@ def _utf8(s):
         invalid = check_string_utf8(utf8_string)
     elif isinstance(s, unicode):
         utf8_string = s.encode('utf8')
-        invalid = check_string_utf8(utf8_string) == -1 # non-XML?
+        invalid = check_string_utf8_unicode(s) == -1 # non-XML?
     elif isinstance(s, bytes):
         utf8_string = bytes(s)
         invalid = check_string_utf8(utf8_string)
